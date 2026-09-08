@@ -8,6 +8,13 @@
       "when": 1788881225105,
       "tag": "0000_outgoing_pete_wisdom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788883281547,
+      "tag": "0001_faulty_felicia_hardy",
+      "breakpoints": true
     }
   ]
 }

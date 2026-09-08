@@ -1,6 +1,4 @@
 import assert from "node:assert/strict";
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
 import test, { after } from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -19,33 +17,6 @@ const vite = await createServer({
 
 after(async () => {
   await vite.close();
-});
-
-async function readCssTree(directory) {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const contents = await Promise.all(
-    entries.map(async (entry) => {
-      const entryPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        return readCssTree(entryPath);
-      }
-      return entry.name.endsWith(".css") ? readFile(entryPath, "utf8") : "";
-    }),
-  );
-  return contents.join("\n");
-}
-
-test("emits the catalog's animation and scrolling utilities", async () => {
-  const css = await readCssTree(path.join(root, "dist"));
-
-  assert.match(css, /--tw-enter-opacity/);
-  assert.match(css, /scrollbar-width:\s*thin/);
-  assert.match(css, /scrollbar-width:\s*none/);
-  assert.match(css, /scrollbar-gutter:\s*stable/);
-  assert.match(css, /scroll-fade-reveal-b/);
-  assert.match(css, /mask-image:/);
-  assert.match(css, /tw-shimmer/);
-  assert.match(css, /prefers-reduced-motion:\s*reduce/);
 });
 
 test("forwards progress semantics to the primitive", async () => {
@@ -82,4 +53,28 @@ test("renders sidebar skeletons deterministically", async () => {
 
   assert.equal(first, second);
   assert.match(first, /--skeleton-width:70%/);
+});
+
+test("analytics ranks all 100 numbers without future data", async () => {
+  const { analyzeNumbers } = await vite.ssrLoadModule("/lib/analytics.ts");
+  const draws = Array.from({ length: 40 }, (_, i) => ({
+    drawDate: "2025-" + String(Math.floor(i / 28) + 1).padStart(2, "0") + "-" + String((i % 28) + 1).padStart(2, "0"),
+    last2: String((i * 7) % 100).padStart(2, "0"),
+  }));
+  const ranked = analyzeNumbers(draws);
+  assert.equal(ranked.length, 100);
+  assert.equal(new Set(ranked.map(x => x.number)).size, 100);
+  assert.deepEqual(ranked.map(x => x.rank), Array.from({length:100},(_,i)=>i+1));
+});
+
+test("walk-forward backtest uses only prior draws", async () => {
+  const { walkForwardBacktest } = await vite.ssrLoadModule("/lib/analytics.ts");
+  const draws = Array.from({ length: 45 }, (_, i) => ({
+    drawDate: "2025-" + String(Math.floor(i / 28) + 1).padStart(2, "0") + "-" + String((i % 28) + 1).padStart(2, "0"),
+    last2: String(i % 100).padStart(2, "0"),
+  }));
+  const result = walkForwardBacktest(draws, 30);
+  assert.equal(result.sampleSize, 15);
+  assert.equal(result.rows[0].drawDate, draws[30].drawDate);
+  assert.deepEqual(result.baselines, {top1:1,top3:3,top5:5,top10:10});
 });

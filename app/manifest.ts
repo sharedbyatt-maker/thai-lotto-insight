@@ -1,0 +1,1 @@
+import type {MetadataRoute} from "next";export default function manifest():MetadataRoute.Manifest{return{name:"ThaiLotto Insight",short_name:"ThaiLotto",description:"Thai lottery results and transparent historical statistics",start_url:"/",display:"standalone",background_color:"#f7f8f5",theme_color:"#0b6b46",icons:[{src:"/favicon.svg",sizes:"any",type:"image/svg+xml"}]}}
