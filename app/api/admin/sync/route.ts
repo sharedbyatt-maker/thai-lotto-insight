@@ -1,12 +1,10 @@
-import {getChatGPTUser} from "../../../chatgpt-auth";
 import {importHistoricalBatch} from "../../../../lib/importer";
 import {runAnalysisPipeline} from "../../../../lib/engine";
+import {requireAdminApi,unauthorized} from "../../../../lib/admin-auth";
 
 export const dynamic="force-dynamic";
-async function authorized(request:Request){const token=request.headers.get("authorization")?.replace(/^Bearer\s+/i,""),machine=!!process.env.SYNC_TOKEN&&token===process.env.SYNC_TOKEN;if(machine)return true;const u=await getChatGPTUser();return !!u&&!!process.env.ADMIN_EMAIL&&u.email.toLowerCase()===process.env.ADMIN_EMAIL.toLowerCase()}
-
 export async function POST(request:Request){
-  if(!await authorized(request))return Response.json({error:"Unauthorized"},{status:401});
+  if(!await requireAdminApi(request))return unauthorized();
   const form=await request.formData().catch(()=>null),limit=Number(form?.get("limit")??12);
   try{
     const result=await importHistoricalBatch(Number.isFinite(limit)?limit:12),analysis=result.remaining===0?await runAnalysisPipeline():null;

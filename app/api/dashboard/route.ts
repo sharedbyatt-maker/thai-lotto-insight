@@ -1,9 +1,11 @@
 import {desc,eq,gt,sql} from "drizzle-orm";
 import {getDb} from "../../../db";
-import {backtestRuns,engineVersions,importQueue,lotteryDraws,mlRuns,optimizerRuns,predictionResults,predictionRuns,predictions,rejectedDraws,sourceVerifications,syncRuns} from "../../../db/schema";
+import {backtestRuns,dataAuditRuns,engineVersions,importQueue,lotteryDraws,mlRuns,optimizerRuns,predictionResults,predictionRuns,predictions,providerHealthEvents,rejectedDraws,sourceVerifications,syncRuns} from "../../../db/schema";
 import {analyzeNumbers,DEFAULT_WEIGHTS,MIN_HISTORY} from "../../../lib/analytics";
 import {DATA_LICENSE_STATUS} from "../../../lib/importer";
 import {GLO_CATALOG_URL,GLO_RESOURCE_ID} from "../../../lib/providers";
+import {publicDataMetadata} from "../../../lib/freshness";
+import {commercialMonetizationGuard} from "../../../lib/commercial";
 
 export const dynamic="force-dynamic";
 export async function GET(){try{
@@ -16,15 +18,19 @@ export async function GET(){try{
   const engine=(await db.select().from(engineVersions).where(eq(engineVersions.active,true)).limit(1))[0]??null;
   const lastSync=(await db.select().from(syncRuns).orderBy(desc(syncRuns.id)).limit(1))[0]??null;
   const lastSuccessfulImport=(await db.select().from(syncRuns).where(gt(syncRuns.importedCount,0)).orderBy(desc(syncRuns.id)).limit(1))[0]??null;
+  const lastSuccessfulSync=(await db.select().from(syncRuns).where(eq(syncRuns.status,"success")).orderBy(desc(syncRuns.id)).limit(1))[0]??null;
   const backtest=(await db.select().from(backtestRuns).orderBy(desc(backtestRuns.id)).limit(1))[0]??null;
   const optimizer=(await db.select().from(optimizerRuns).orderBy(desc(optimizerRuns.id)).limit(1))[0]??null,ml=(await db.select().from(mlRuns).orderBy(desc(mlRuns.id)).limit(1))[0]??null;
   const verificationSamples=await db.select().from(sourceVerifications).orderBy(sourceVerifications.drawDate);
+  const healthRows=await db.select().from(providerHealthEvents).orderBy(desc(providerHealthEvents.id)).limit(100),healthSuccesses=healthRows.filter(x=>x.success),healthFailures=healthRows.filter(x=>!x.success),consecutiveFailures=healthRows.findIndex(x=>x.success)===-1?healthRows.length:healthRows.findIndex(x=>x.success);
+  const providerHealth={sampleSize:healthRows.length,requestSuccessRate:healthRows.length?100*healthSuccesses.length/healthRows.length:null,lastSuccess:healthSuccesses[0]?.createdAt??null,lastFailure:healthFailures[0]?.createdAt??null,responseValidationFailures:healthRows.filter(x=>x.validationFailure).length,averageLatencyMs:healthRows.length?healthRows.reduce((n,x)=>n+x.latencyMs,0)/healthRows.length:null,consecutiveFailures,status:consecutiveFailures>=3?"unhealthy":consecutiveFailures?"degraded":healthRows.length?"healthy":"unobserved"};
+  const latestAudit=(await db.select().from(dataAuditRuns).orderBy(desc(dataAuditRuns.id)).limit(1))[0]??null;
   const run=(await db.select().from(predictionRuns).orderBy(desc(predictionRuns.id)).limit(1))[0]??null;
   let picks:any[]=[];if(run)picks=await db.select().from(predictions).where(eq(predictions.runId,run.id)).orderBy(predictions.rank).limit(10);
   const history=await db.select().from(predictionResults).orderBy(desc(predictionResults.id)).limit(20);
   const enough=draws.length>=MIN_HISTORY,stats=enough?analyzeNumbers(draws.map(d=>({drawDate:d.drawDate,last2:d.last2}))):[];
-  const ageDays=latest?Math.floor((Date.now()-new Date(latest.drawDate+"T00:00:00Z").getTime())/86400000):null;
-  const status=lastSync?.status==="failed"&&!latest?"source_error":!draws.length?"sync_pending":!enough?"insufficient_data":ageDays!==null&&ageDays>25?"stale_data":"ready";
-  return Response.json({status,statusLabel:status.toUpperCase().replaceAll("_"," "),latest,drawCount:draws.length,rejectedDrawCount:rejected,earliest:draws[0]?.drawDate??null,latestDate:latest?.drawDate??null,missingExpectedDraws,missingExpectedDrawDates,duplicateAttemptsPrevented:duplicateAttempts,lastSuccessfulImport,lastSync,activeSource:{name:"Government Lottery Office (GLO)",catalogUrl:GLO_CATALOG_URL,resourceId:GLO_RESOURCE_ID},licenseStatus:DATA_LICENSE_STATUS,minimumSampleThreshold:MIN_HISTORY,statisticalSampleSize:enough?draws.length:0,verificationSamples,statistics:stats,hotDigits:enough?digitStats(draws.map(d=>d.last2)):[],engine:engine??{version:null,parameters:JSON.stringify(DEFAULT_WEIGHTS),active:false},latestRun:run,picks,history,backtest,optimizer,ml,generatedAt:new Date().toISOString()},{headers:{"Cache-Control":"public, max-age=60, stale-while-revalidate=300"}});
+  const dataMeta=publicDataMetadata({dataCutoff:latest?.drawDate??null,lastSuccessfulSync:lastSuccessfulSync?.completedAt??null});
+  const status=!draws.length?(lastSync?.status==="failed"?"source_error":"sync_pending"):!enough?"insufficient_data":providerHealth.status==="unhealthy"?"source_error":dataMeta.freshness.isStale?"stale_data":"ready";
+  return Response.json({status,statusLabel:status.toUpperCase().replaceAll("_"," "),latest,drawCount:draws.length,rejectedDrawCount:rejected,earliest:draws[0]?.drawDate??null,latestDate:latest?.drawDate??null,missingExpectedDraws,missingExpectedDrawDates,duplicateAttemptsPrevented:duplicateAttempts,lastSuccessfulImport,lastSuccessfulSync,lastSync,dataMeta,providerHealth,latestAudit,commercialMonetization:commercialMonetizationGuard(),activeSource:{name:"Government Lottery Office (GLO)",catalogUrl:GLO_CATALOG_URL,resourceId:GLO_RESOURCE_ID},licenseStatus:DATA_LICENSE_STATUS,minimumSampleThreshold:MIN_HISTORY,statisticalSampleSize:enough?draws.length:0,verificationSamples,statistics:stats,hotDigits:enough?digitStats(draws.map(d=>d.last2)):[],engine:engine??{version:null,parameters:JSON.stringify(DEFAULT_WEIGHTS),active:false},latestRun:run,picks,history,backtest,backtestReport:backtest?JSON.parse(backtest.splitMetadata):null,optimizer,ml,generatedAt:new Date().toISOString()},{headers:{"Cache-Control":"public, max-age=60, stale-while-revalidate=300"}});
 }catch(e){return Response.json({status:"source_error",statusLabel:"SOURCE ERROR",message:"Historical data source or database is unavailable",detail:e instanceof Error?e.message:"Database unavailable"},{status:503})}}
 function digitStats(v:string[]){return Array.from({length:10},(_,n)=>({digit:String(n),count:v.reduce((c,x)=>c+(x[0]===String(n)?1:0)+(x[1]===String(n)?1:0),0)})).sort((a,b)=>b.count-a.count)}

@@ -1,7 +1,8 @@
 import {and,asc,eq,inArray,lt,or,sql} from "drizzle-orm";
 import {getDb} from "../db";
-import {importQueue,lotteryDraws,rejectedDraws,syncRuns,systemEvents} from "../db/schema";
-import {GLO_DATE_API,GLOProvider,ProviderPayloadError} from "./providers";
+import {importQueue,lotteryDraws,providerHealthEvents,rejectedDraws,syncRuns,systemEvents} from "../db/schema";
+import {GLO_DATE_API,GLO_LATEST_API,GLOProvider,LotteryDataProvider,ProviderPayloadError,ProviderRequestError,ProviderResult} from "./providers";
+import {ImportPersistence,processImportCandidate} from "./import-core";
 
 export const HISTORICAL_START_DATE="2017-12-30";
 export const MINIMUM_ANALYSIS_DRAWS=100;
@@ -35,37 +36,34 @@ export async function seedHistoricalQueue(){
   return rows.length;
 }
 
-function payloadHasPrizeShape(raw:unknown){const s=JSON.stringify(raw);return /"(first|last2|last3f|last3b)"\s*:/.test(s)}
-async function hash(value:unknown){const bytes=new TextEncoder().encode(JSON.stringify(value));return [...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function fetchWithHealth(provider:LotteryDataProvider,requestType:"date"|"latest",operation:()=>Promise<ProviderResult>){
+  const db=getDb(),started=Date.now(),endpoint=requestType==="date"?GLO_DATE_API:GLO_LATEST_API;
+  try{const result=await operation();await db.insert(providerHealthEvents).values({provider:provider.name,endpoint,requestType,success:true,validationFailure:false,latencyMs:Date.now()-started,httpStatus:200,errorMessage:null,createdAt:new Date().toISOString()});return result}
+  catch(error){await db.insert(providerHealthEvents).values({provider:provider.name,endpoint,requestType,success:false,validationFailure:error instanceof ProviderPayloadError,latencyMs:Date.now()-started,httpStatus:error instanceof ProviderRequestError?error.httpStatus:null,errorMessage:error instanceof Error?error.message:"Provider request failed",createdAt:new Date().toISOString()});throw error}
+}
 
-export async function importHistoricalBatch(limit=12){
-  const db=getDb(),provider=new GLOProvider(),startedAt=new Date().toISOString();
+export async function importHistoricalBatch(limit=12,provider:LotteryDataProvider=new GLOProvider()){
+  const db=getDb(),startedAt=new Date().toISOString();
   await seedHistoricalQueue();
   const [run]=await db.insert(syncRuns).values({provider:provider.name,status:"running",startedAt,importedCount:0,invalidCount:0,duplicateCount:0,processedCount:0}).returning();
   const rows=await db.select().from(importQueue).where(or(eq(importQueue.status,"pending"),and(eq(importQueue.status,"retry"),lt(importQueue.attempts,3)))).orderBy(asc(importQueue.candidateDate)).limit(Math.max(1,Math.min(limit,20)));
   let imported=0,invalid=0,duplicates=0,noResult=0,failures=0;
+  const store:ImportPersistence={insertDraw:async(draw,now)=>(await db.insert(lotteryDraws).values({...draw,validationStatus:"valid",createdAt:now,updatedAt:now}).onConflictDoNothing({target:lotteryDraws.drawDate}).returning({id:lotteryDraws.id})).length>0,insertRejected:async input=>{await db.insert(rejectedDraws).values(input)},updateCandidate:async(id,update)=>{await db.update(importQueue).set(update).where(eq(importQueue.id,id))}};
   for(const row of rows){
     const attemptedAt=new Date().toISOString();
+    const outcome=await processImportCandidate({row,fetch:()=>fetchWithHealth(provider,"date",()=>provider.fetchByDate(row.candidateDate)),store,providerName:provider.name,sourceUrl:GLO_DATE_API,now:attemptedAt});
+    if(outcome==="imported")imported++;else if(outcome==="duplicate")duplicates++;else if(outcome==="rejected")invalid++;else if(outcome==="no_result")noResult++;else failures++;
+  }
+  if(rows.length===0){
     try{
-      const {draw}=await provider.fetchByDate(row.candidateDate);
-      const inserted=await db.insert(lotteryDraws).values({...draw,validationStatus:"valid",createdAt:attemptedAt,updatedAt:attemptedAt}).onConflictDoNothing({target:lotteryDraws.drawDate}).returning({id:lotteryDraws.id});
-      if(inserted.length)imported++;else duplicates++;
-      await db.update(importQueue).set({status:inserted.length?"imported":"duplicate",attempts:row.attempts+1,lastError:null,lastAttemptAt:attemptedAt,completedAt:attemptedAt}).where(eq(importQueue.id,row.id));
-    }catch(error){
-      const message=error instanceof Error?error.message:"Unknown import failure";
-      const raw=error instanceof ProviderPayloadError?error.raw:null;
-      if(raw!==null&&!payloadHasPrizeShape(raw)){
-        noResult++;
-        await db.update(importQueue).set({status:"no_result",attempts:row.attempts+1,lastError:message,lastAttemptAt:attemptedAt,completedAt:attemptedAt}).where(eq(importQueue.id,row.id));
-      }else if(raw!==null){
-        invalid++;
-        await db.insert(rejectedDraws).values({requestedDate:row.candidateDate,provider:provider.name,sourceUrl:GLO_DATE_API,reason:message,rawPayload:JSON.stringify(raw).slice(0,120000),payloadHash:await hash(raw),createdAt:attemptedAt});
-        await db.update(importQueue).set({status:"rejected",attempts:row.attempts+1,lastError:message,lastAttemptAt:attemptedAt,completedAt:attemptedAt}).where(eq(importQueue.id,row.id));
-      }else{
-        failures++;
-        await db.update(importQueue).set({status:row.attempts+1>=3?"failed":"retry",attempts:row.attempts+1,lastError:message,lastAttemptAt:attemptedAt}).where(eq(importQueue.id,row.id));
+      const {draw}=await fetchWithHealth(provider,"latest",()=>provider.fetchLatest());
+      const exists=(await db.select({id:lotteryDraws.id}).from(lotteryDraws).where(eq(lotteryDraws.drawDate,draw.drawDate)).limit(1))[0];
+      if(!exists&&draw.drawDate<=new Date().toISOString().slice(0,10)){
+        const savedAt=new Date().toISOString();
+        const inserted=await db.insert(lotteryDraws).values({...draw,validationStatus:"valid",createdAt:savedAt,updatedAt:savedAt}).onConflictDoNothing({target:lotteryDraws.drawDate}).returning({id:lotteryDraws.id});
+        if(inserted.length)imported++;
       }
-    }
+    }catch{failures++}
   }
   const remaining=(await db.select({count:sql<number>`count(*)`}).from(importQueue).where(inArray(importQueue.status,["pending","retry"])))[0]?.count??0;
   const status=failures&&imported===0&&duplicates===0?"failed":remaining?"partial":"success",completedAt=new Date().toISOString();

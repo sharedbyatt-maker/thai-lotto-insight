@@ -12,6 +12,11 @@ command -v timeout || {
   exit 69
 }
 
+if [[ "${COMMERCIAL_MONETIZATION_ENABLED:-false}" == "true" && "${COMMERCIAL_DATA_LICENSE_APPROVED:-false}" != "true" ]]; then
+  echo "Advertising refused: COMMERCIAL DATA LICENSE — UNRESOLVED." >&2
+  exit 78
+fi
+
 vinext="${SITES_PROJECT_ROOT}/node_modules/.bin/vinext"
 if [[ ! -x "${vinext}" ]]; then
   echo "vinext is unavailable. Run npm run install:ci and wait for it to finish before building." >&2

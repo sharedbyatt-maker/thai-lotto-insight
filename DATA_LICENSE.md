@@ -6,6 +6,8 @@ Last reviewed: 2026-09-09
 
 **COMMERCIAL DATA LICENSE — UNRESOLVED**
 
+Production enforcement: `COMMERCIAL_MONETIZATION_ENABLED=false`. The build and runtime guard refuse advertising when `COMMERCIAL_DATA_LICENSE_APPROVED` is not explicitly verified. Public-access wording is not treated as commercial permission.
+
 ThaiLotto Insight must not represent that the Government Lottery Office (GLO)
 dataset is cleared for commercial reuse. The GLO Data Catalog labels the parent
 dataset and every resource inspected as **Creative Commons Non-Commercial
