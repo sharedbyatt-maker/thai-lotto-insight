@@ -78,3 +78,21 @@ test("walk-forward backtest uses only prior draws", async () => {
   assert.equal(result.rows[0].drawDate, draws[30].drawDate);
   assert.deepEqual(result.baselines, {top1:1,top3:3,top5:5,top10:10});
 });
+
+test("GLO normalization preserves leading zeroes and converts Buddhist dates", async () => {
+  const { normalizeGloResponse, normalizeDrawDate } = await vite.ssrLoadModule("/lib/providers.ts");
+  const raw={response:{displayDate:"1 กันยายน 2568",prizes:{first:{number:[{value:"004615"}]},last3f:{number:[{value:"031"},{value:"429"}]},last3b:{number:[{value:"094"},{value:"937"}]},last2:{number:[{value:"03"}]}}}};
+  const draw=await normalizeGloResponse(raw,"https://www.glo.or.th/api/checking/getLotteryResult","2025-09-01");
+  assert.equal(normalizeDrawDate("01/09/2568"),"2025-09-01");
+  assert.equal(draw.drawDate,"2025-09-01");
+  assert.equal(draw.firstPrize,"004615");
+  assert.equal(draw.front31,"031");
+  assert.equal(draw.last31,"094");
+  assert.equal(draw.last2,"03");
+  assert.match(draw.sourceHash,/^[a-f0-9]{64}$/);
+});
+
+test("GLO normalization rejects incomplete prize payloads", async () => {
+  const { normalizeGloResponse } = await vite.ssrLoadModule("/lib/providers.ts");
+  await assert.rejects(()=>normalizeGloResponse({displayDate:"2025-09-01",first:{number:[{value:"123456"}]}},"official","2025-09-01"),/front-3/);
+});

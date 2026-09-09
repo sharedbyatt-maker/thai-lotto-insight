@@ -12,11 +12,13 @@ ThaiLotto Insight is a public, mobile-first Thai Government Lottery results and 
 
 ## Data integrity
 
-Production pages never invent missing results, picks, accuracy, or backtest metrics. Until verified results are synchronized, the interface says synchronization is pending. Test data exists only inside tests.
+Production pages never invent missing results, picks, accuracy, or backtest metrics. Until 100 verified results are synchronized, the interface says insufficient historical data and suppresses scores. Test data exists only inside tests.
 
 ## Data flow
 
-The protected sync endpoint fetches the official GLO result, validates every prize format, deduplicates by draw date, stores source metadata, and records success or failure. Provider failure does not crash public pages.
+The protected importer uses the official GLO results-by-date API. It persists a restartable candidate-date queue, validates every prize format without converting digit strings to numbers, deduplicates by draw date, stores endpoint/resource/hash metadata, quarantines malformed payloads, and records success or failure.
+
+Exact official API research is in [docs/GLO_RESOURCES.md](docs/GLO_RESOURCES.md). Licensing and commercial-use uncertainty are documented in [DATA_LICENSE.md](DATA_LICENSE.md).
 
 ## Configuration
 

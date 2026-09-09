@@ -1,0 +1,1 @@
+ALTER TABLE `v3_lottery_draws` ADD `source_document_url` text;

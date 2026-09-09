@@ -1,3 +1,19 @@
-import {eq} from "drizzle-orm";import {getChatGPTUser} from "../../../chatgpt-auth";import {getDb} from "../../../../db";import {lotteryDraws,syncRuns,systemEvents} from "../../../../db/schema";import {GLOProvider} from "../../../../lib/providers";
-export const dynamic="force-dynamic";async function authorized(){const u=await getChatGPTUser();return !!u&&!!process.env.ADMIN_EMAIL&&u.email.toLowerCase()===process.env.ADMIN_EMAIL.toLowerCase()}
-export async function POST(){if(!await authorized())return Response.json({error:"Unauthorized"},{status:401});const db=getDb(),now=new Date().toISOString(),[run]=await db.insert(syncRuns).values({provider:"GLO",status:"running",startedAt:now,importedCount:0,invalidCount:0}).returning();try{const d=await new GLOProvider().fetchLatest(),{sourceUrl:_,...stored}=d;void _;await db.insert(lotteryDraws).values({...stored,validationStatus:"valid",createdAt:now,updatedAt:now}).onConflictDoNothing({target:lotteryDraws.drawDate});await db.update(syncRuns).set({status:"success",completedAt:new Date().toISOString(),importedCount:1}).where(eq(syncRuns.id,run.id));return Response.json({status:"success",draw:d})}catch(e){const message=e instanceof Error?e.message:"Sync failed";await db.update(syncRuns).set({status:"failed",completedAt:new Date().toISOString(),errorMessage:message}).where(eq(syncRuns.id,run.id));await db.insert(systemEvents).values({level:"error",eventType:"sync_failed",message,createdAt:new Date().toISOString()});return Response.json({status:"failed",message},{status:502})}}
+import {getChatGPTUser} from "../../../chatgpt-auth";
+import {importHistoricalBatch} from "../../../../lib/importer";
+import {runAnalysisPipeline} from "../../../../lib/engine";
+
+export const dynamic="force-dynamic";
+async function authorized(request:Request){const token=request.headers.get("authorization")?.replace(/^Bearer\s+/i,""),machine=!!process.env.SYNC_TOKEN&&token===process.env.SYNC_TOKEN;if(machine)return true;const u=await getChatGPTUser();return !!u&&!!process.env.ADMIN_EMAIL&&u.email.toLowerCase()===process.env.ADMIN_EMAIL.toLowerCase()}
+
+export async function POST(request:Request){
+  if(!await authorized(request))return Response.json({error:"Unauthorized"},{status:401});
+  const form=await request.formData().catch(()=>null),limit=Number(form?.get("limit")??12);
+  try{
+    const result=await importHistoricalBatch(Number.isFinite(limit)?limit:12),analysis=result.remaining===0?await runAnalysisPipeline():null;
+    if((request.headers.get("accept")??"").includes("text/html"))return Response.redirect(new URL("/admin?sync="+encodeURIComponent(result.status),request.url),303);
+    return Response.json({...result,analysis});
+  }catch(e){
+    const message=e instanceof Error?e.message:"Sync failed";
+    return Response.json({status:"failed",message},{status:502});
+  }
+}
