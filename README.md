@@ -41,6 +41,12 @@ Open /admin and sign in with ChatGPT using the account matching ADMIN_EMAIL. The
 
 A walk-forward test scores draw N using draws strictly before N. Baselines are Top-1 1%, Top-3 3%, Top-5 5%, and Top-10 10%. Small samples are not evidence of predictive advantage.
 
+## Digit-first candidate engine
+
+The experimental last-2 engine models tens and units independently, then forms each pair from `P(tens) × P(units)`. It calculates 10/20/30/60/100-draw and all-history frequencies, exponentially weighted recency, position gaps, first-order Markov transitions, repeats, reverse pairs, doubles, and low-weight pair interactions. A chronological TRAIN/VALIDATION/LOCKED TEST comparison and feature ablation decide which candidate features are retained. The production engine is not replaced automatically.
+
+Sparse observations are Bayesian/Laplace-smoothed. A digit uses `(count + 1) / (n + 10)`, shrinking toward 10%; an exact pair uses `(count + 1) / (n + 100)`, shrinking toward 1%. First-order transitions use `(transition count + 1) / (previous-digit count + 10)`. Second-order Markov remains disabled until at least 500 verified draws make it eligible for a separate chronological experiment. Gap and hot/cold labels are descriptive and never mean a number is due.
+
 ## Provider recovery
 
 If GLO is unavailable, the site keeps the last verified result and logs the failure. Never add a fallback without documenting its provenance and validation.
