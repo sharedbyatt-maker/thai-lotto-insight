@@ -47,6 +47,8 @@ The experimental last-2 engine models tens and units independently, then forms e
 
 Sparse observations are Bayesian/Laplace-smoothed. A digit uses `(count + 1) / (n + 10)`, shrinking toward 10%; an exact pair uses `(count + 1) / (n + 100)`, shrinking toward 1%. First-order transitions use `(transition count + 1) / (previous-digit count + 10)`. Second-order Markov remains disabled until at least 500 verified draws make it eligible for a separate chronological experiment. Gap and hot/cold labels are descriptive and never mean a number is due.
 
+The clean-room donor audit and Phase 1 scientific boundaries are documented in [docs/REFERENCE_FEATURE_AUDIT.md](docs/REFERENCE_FEATURE_AUDIT.md). Pattern Lab never substitutes the last two digits of the first prize for the official GLO last-2 prize.
+
 ## Provider recovery
 
 If GLO is unavailable, the site keeps the last verified result and logs the failure. Never add a fallback without documenting its provenance and validation.
