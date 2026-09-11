@@ -1,0 +1,3 @@
+import{eq}from"drizzle-orm";import{getDb}from"../../../../db";import{lotteryDraws}from"../../../../db/schema";import{phase2Stats}from"../../../../lib/phase2-stats";
+export const dynamic="force-dynamic";
+export async function GET(){try{const draws=await getDb().select({drawDate:lotteryDraws.drawDate,last2:lotteryDraws.last2}).from(lotteryDraws).where(eq(lotteryDraws.validationStatus,"valid")).orderBy(lotteryDraws.drawDate);return Response.json({status:draws.length?"ready":"sync_pending",...phase2Stats(draws)},{headers:{"Cache-Control":"public, max-age=300"}})}catch{return Response.json({status:"source_error"},{status:503})}}

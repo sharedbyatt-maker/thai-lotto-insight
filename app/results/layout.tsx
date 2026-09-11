@@ -1,0 +1,3 @@
+import type{Metadata}from"next";import{SITE_URL}from"../../lib/seo";
+export const metadata:Metadata={title:"Thai Lottery Results — Historical GLO Archive",description:"Browse verified Thai Government Lottery first prize, 3-digit and official last 2-digit results by draw date.",alternates:{canonical:`${SITE_URL}/results`},openGraph:{title:"Thai Lottery Results — Historical GLO Archive",description:"Verified historical GLO results by draw date.",url:`${SITE_URL}/results`,type:"website"},twitter:{card:"summary",title:"Thai Lottery Results Archive",description:"Verified historical GLO results."}};
+export default function Layout({children}:{children:React.ReactNode}){return children}

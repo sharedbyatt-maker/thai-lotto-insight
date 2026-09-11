@@ -1,1 +1,1 @@
-import type {MetadataRoute} from "next";export default function robots():MetadataRoute.Robots{return{rules:[{userAgent:"*",allow:"/",disallow:"/admin"}],sitemap:"https://thai-lotto-insight.happylearnkids2025.chatgpt.site/sitemap.xml"}}
+import type{MetadataRoute}from"next";export default function robots():MetadataRoute.Robots{return{rules:[{userAgent:"*",allow:["/","/results","/statistics","/2-digit","/methodology","/backtest","/data-sources"],disallow:["/admin","/api/"]}],sitemap:"https://thai-lotto-insight.happylearnkids2025.chatgpt.site/sitemap.xml"}}

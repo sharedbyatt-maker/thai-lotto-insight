@@ -1,0 +1,1 @@
+import type{Metadata}from"next";import{SITE_URL}from"../../lib/seo";export const metadata:Metadata={title:"Thai Lottery Model Backtest",description:"Transparent chronological Thai lottery model evaluation against random baselines.",alternates:{canonical:`${SITE_URL}/backtest`}};export default function Layout({children}:{children:React.ReactNode}){return children}
