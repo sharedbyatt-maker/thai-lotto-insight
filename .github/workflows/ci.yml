@@ -9,7 +9,21 @@ jobs:
         with: {node-version: 22, cache: npm}
       - run: npm ci
       - run: npm run lint
-      - run: npm run typecheck
+      - name: Typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck 2>&1 | tee typecheck-output.txt
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            {
+              echo "## Typecheck failure"
+              echo '```text'
+              tail -n 80 typecheck-output.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$status"
       - run: npm run test:unit
       - run: npm run test:integration
       - run: npm run build
