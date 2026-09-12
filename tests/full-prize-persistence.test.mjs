@@ -6,7 +6,7 @@ const route=readFileSync(new URL("../app/api/admin/full-prize-backfill/route.ts"
 
 test("full-prize migration is additive and normalized",()=>{assert.match(migration,/CREATE TABLE `v3_full_prize_draws`/);assert.match(migration,/CREATE TABLE `v3_full_prize_entries`/);assert.match(migration,/CREATE TABLE `v3_full_prize_backfill`/);assert.match(migration,/`source_hash` text NOT NULL/);assert.match(migration,/`winning_number` text NOT NULL/);assert.doesNotMatch(migration,/ALTER TABLE `v3_lottery_draws`|DROP TABLE|DELETE FROM `v3_lottery_draws`/)});
 
-test("persisted prize snapshots are versioned by source hash",()=>{assert.match(store,/drawDate:t\.drawDate,t\.sourceHash/);assert.match(store,/eq\(fullPrizeEntries\.sourceHash,meta\.sourceHash\)/);assert.match(store,/isActive:false/);assert.match(store,/onConflictDoNothing\(\)/)});
+test("persisted prize snapshots are versioned by source hash",()=>{assert.match(store,/ON CONFLICT\(draw_date,source_hash\)/);assert.match(store,/WHERE draw_date=\? AND source_hash=\?/);assert.match(store,/SET is_active=0/);assert.match(store,/INSERT OR IGNORE INTO v3_full_prize_entries/)});
 
 test("historical checker uses persistent verified data before official fetch",()=>{const cache=checker.indexOf("getPersistedFullDraw");const fetch=checker.indexOf("fetchOfficialFullDraw(normalized)");assert.ok(cache>=0&&fetch>cache);assert.match(checker,/Fall through to verified official source/);assert.match(checker,/Storage may not be migrated yet/)});
 
