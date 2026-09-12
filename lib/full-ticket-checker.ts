@@ -1,5 +1,4 @@
 import {GLO_DATE_API,GLO_LATEST_API,normalizeDrawDate} from "./providers";
-import {getPersistedFullDraw,persistFullPrizeDraw} from "./full-prize-store";
 
 export const GLO_TICKET_CHECK_API="https://www.glo.or.th/api/checking/getcheckLotteryResult";
 export type PrizeCategory="FIRST_PRIZE"|"NEAR_FIRST_PRIZE"|"FRONT_3"|"LAST_3"|"LAST_2"|"SECOND_PRIZE"|"THIRD_PRIZE"|"FOURTH_PRIZE"|"FIFTH_PRIZE";
@@ -68,12 +67,12 @@ export async function fetchOfficialFullDraw(date?:string):Promise<FullPrizeDraw>
   return normalizeFullGloResponse(raw,GLO_LATEST_API);
 }
 
-async function persistBestEffort(draw:FullPrizeDraw){try{await persistFullPrizeDraw(draw)}catch{/* Storage may not be migrated yet; verified API checking must still work. */}}
+async function persistBestEffort(draw:FullPrizeDraw){try{const {persistFullPrizeDraw}=await import("./full-prize-store");await persistFullPrizeDraw(draw)}catch{/* Storage may not be migrated yet; verified API checking must still work. */}}
 
 export async function fetchVerifiedFullDraw(date?:string):Promise<FullPrizeDraw>{
   if(date){
     const normalized=normalizeDrawDate(date);
-    try{const cached=await getPersistedFullDraw(normalized);if(cached)return cached}catch{/* Fall through to verified official source. */}
+    try{const {getPersistedFullDraw}=await import("./full-prize-store");const cached=await getPersistedFullDraw(normalized);if(cached)return cached}catch{/* Fall through to verified official source. */}
     const draw=await fetchOfficialFullDraw(normalized);
     await persistBestEffort(draw);
     return draw;
