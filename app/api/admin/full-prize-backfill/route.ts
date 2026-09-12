@@ -1,6 +1,6 @@
-import {requireAdminApi,unauthorized} from "../../../../../lib/admin-auth";
-import {runFullPrizeBackfill} from "../../../../../lib/full-prize-backfill";
-import {getFullPrizeBackfillStatus} from "../../../../../lib/full-prize-store";
+import {requireAdminApi,unauthorized} from "../../../../lib/admin-auth";
+import {runFullPrizeBackfill} from "../../../../lib/full-prize-backfill";
+import {getFullPrizeBackfillStatus} from "../../../../lib/full-prize-store";
 
 export const dynamic="force-dynamic";
 
