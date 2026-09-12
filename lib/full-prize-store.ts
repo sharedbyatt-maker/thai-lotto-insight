@@ -50,7 +50,6 @@ const fullPrizeBackfill=sqliteTable("v3_full_prize_backfill",{
 ]);
 
 type Entry={category:PrizeCategory;number:string;position:number};
-const categories:PrizeCategory[]=["NEAR_FIRST_PRIZE","FRONT_3","LAST_3","SECOND_PRIZE","THIRD_PRIZE","FOURTH_PRIZE","FIFTH_PRIZE"];
 function entriesFromDraw(draw:FullPrizeDraw):Entry[]{
   const sources:Record<PrizeCategory,string[]>={
     FIRST_PRIZE:[draw.firstPrize],NEAR_FIRST_PRIZE:draw.nearFirst,FRONT_3:draw.front3,LAST_3:draw.last3,LAST_2:[draw.last2],SECOND_PRIZE:draw.secondPrize,THIRD_PRIZE:draw.thirdPrize,FOURTH_PRIZE:draw.fourthPrize,FIFTH_PRIZE:draw.fifthPrize,
@@ -62,8 +61,7 @@ export async function persistFullPrizeDraw(draw:FullPrizeDraw):Promise<void>{
   const db=getDb(),now=new Date().toISOString();
   await db.update(fullPrizeDraws).set({isActive:false}).where(and(eq(fullPrizeDraws.drawDate,draw.drawDate),eq(fullPrizeDraws.isActive,true)));
   await db.insert(fullPrizeDraws).values({drawDate:draw.drawDate,sourceHash:draw.sourceHash,completeness:draw.completeness,sourceName:draw.source,sourceUrl:draw.sourceUrl,verifiedAt:draw.verifiedAt,fetchedAt:now,isActive:true,firstPrize:draw.firstPrize,last2:draw.last2}).onConflictDoUpdate({target:[fullPrizeDraws.drawDate,fullPrizeDraws.sourceHash],set:{completeness:draw.completeness,sourceName:draw.source,sourceUrl:draw.sourceUrl,verifiedAt:draw.verifiedAt,fetchedAt:now,isActive:true,firstPrize:draw.firstPrize,last2:draw.last2}});
-  const rows=entriesFromDraw(draw);
-  for(const row of rows){
+  for(const row of entriesFromDraw(draw)){
     await db.insert(fullPrizeEntries).values({drawDate:draw.drawDate,sourceHash:draw.sourceHash,category:row.category,winningNumber:row.number,positionIndex:row.position,createdAt:now}).onConflictDoNothing();
   }
 }
@@ -99,16 +97,18 @@ export async function markBackfillAttempt(drawDate:string,error?:unknown,draw?:F
   const attempts=(current?.attempts??0)+1;
   if(draw){
     await db.update(fullPrizeBackfill).set({status:"completed",attempts,lastError:null,lastAttemptAt:now,completedAt:now,sourceHash:draw.sourceHash,completeness:draw.completeness}).where(eq(fullPrizeBackfill.drawDate,drawDate));
-  }else{
-    const message=error instanceof Error?error.message:String(error??"Unknown backfill error");
-    await db.update(fullPrizeBackfill).set({status:"failed",attempts,lastError:message.slice(0,500),lastAttemptAt:now}).where(eq(fullPrizeBackfill.drawDate,drawDate));
+    return;
   }
+  const message=error instanceof Error?error.message:String(error??"Unknown backfill error");
+  await db.update(fullPrizeBackfill).set({status:"failed",attempts,lastError:message.slice(0,500),lastAttemptAt:now}).where(eq(fullPrizeBackfill.drawDate,drawDate));
 }
 
 export async function getFullPrizeBackfillStatus(){
   const db=getDb(),rows=await db.select({status:fullPrizeBackfill.status,drawDate:fullPrizeBackfill.drawDate,attempts:fullPrizeBackfill.attempts,lastError:fullPrizeBackfill.lastError,completeness:fullPrizeBackfill.completeness}).from(fullPrizeBackfill).orderBy(asc(fullPrizeBackfill.drawDate));
-  const counts=rows.reduce<Record<string,number>>((acc,row)=>(acc[row.status]=(acc[row.status]??0)+1,acc),{});
-  return{total:rows.length,counts,recentFailures:rows.filter(r=>r.status==="failed").slice(-10)};
+  const counts:Record<string,number>={};
+  let full=0,summary=0;
+  for(const row of rows){counts[row.status]=(counts[row.status]??0)+1;if(row.completeness==="FULL_PRIZE_SET_VERIFIED")full++;if(row.completeness==="SUMMARY_VERIFIED")summary++}
+  return{total:rows.length,counts,full,summary,recentFailures:rows.filter(r=>r.status==="failed").slice(-10)};
 }
 
 export const FULL_PRIZE_STORE_TABLES={draws:"v3_full_prize_draws",entries:"v3_full_prize_entries",backfill:"v3_full_prize_backfill"} as const;
