@@ -22,8 +22,8 @@ export async function POST(request:Request){
       const form=await request.formData().catch(()=>null);
       limit=Number(form?.get("limit")??5);
     }
-    const result=await runFullPrizeBackfill(Number.isFinite(limit)?limit:5);
-    return Response.json({status:"ok",...result});
+    const run=await runFullPrizeBackfill(Number.isFinite(limit)?limit:5);
+    return Response.json({status:"ok",run});
   }catch(error){
     return Response.json({status:"error",message:error instanceof Error?error.message:"Full-prize backfill failed"},{status:502});
   }
