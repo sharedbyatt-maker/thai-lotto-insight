@@ -1,5 +1,8 @@
 name: CI
 on: [push, pull_request]
+permissions:
+  contents: read
+  statuses: write
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -10,6 +13,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - name: Typecheck
+        id: typecheck
         shell: bash
         run: |
           set +e
@@ -24,6 +28,18 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
           exit "$status"
+      - name: Publish first typecheck error
+        if: failure() && steps.typecheck.outcome == 'failure' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          first="$(grep -m1 -E 'error TS[0-9]+' typecheck-output.txt | tr '\n' ' ' | cut -c1-140)"
+          if [ -z "$first" ]; then first="Typecheck failed; inspect CI log"; fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=failure \
+            -f context=typecheck-detail \
+            -f description="$first" >/dev/null
       - run: npm run test:unit
       - run: npm run test:integration
       - run: npm run build
