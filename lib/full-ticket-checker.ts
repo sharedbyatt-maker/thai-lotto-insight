@@ -1,4 +1,5 @@
 import {GLO_DATE_API,GLO_LATEST_API,normalizeDrawDate} from "./providers";
+import {getPersistedFullDraw,persistFullPrizeDraw} from "./full-prize-store";
 
 export const GLO_TICKET_CHECK_API="https://www.glo.or.th/api/checking/getcheckLotteryResult";
 export type PrizeCategory="FIRST_PRIZE"|"NEAR_FIRST_PRIZE"|"FRONT_3"|"LAST_3"|"LAST_2"|"SECOND_PRIZE"|"THIRD_PRIZE"|"FOURTH_PRIZE"|"FIFTH_PRIZE";
@@ -56,4 +57,28 @@ export function checkTicket(ticketValue:unknown,draw:FullPrizeDraw):TicketCheckR
 }
 
 async function post(url:string,body?:unknown){const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","accept":"application/json","user-agent":"ThaiLottoInsight/3.2 (+full-ticket-checker)"},body:body===undefined?undefined:JSON.stringify(body),cache:"no-store",signal:AbortSignal.timeout(15000)});const text=await response.text();if(!response.ok)throw new Error(`GLO HTTP ${response.status}`);try{return JSON.parse(text)}catch{throw new Error("GLO returned non-JSON data")}}
-export async function fetchVerifiedFullDraw(date?:string):Promise<FullPrizeDraw>{if(date){const normalized=normalizeDrawDate(date),[year,month,day]=normalized.split("-");const raw=await post(GLO_DATE_API,{date:day,month,year});return normalizeFullGloResponse(raw,GLO_DATE_API,normalized)}const raw=await post(GLO_LATEST_API);return normalizeFullGloResponse(raw,GLO_LATEST_API)}
+
+export async function fetchOfficialFullDraw(date?:string):Promise<FullPrizeDraw>{
+  if(date){
+    const normalized=normalizeDrawDate(date),[year,month,day]=normalized.split("-");
+    const raw=await post(GLO_DATE_API,{date:day,month,year});
+    return normalizeFullGloResponse(raw,GLO_DATE_API,normalized);
+  }
+  const raw=await post(GLO_LATEST_API);
+  return normalizeFullGloResponse(raw,GLO_LATEST_API);
+}
+
+async function persistBestEffort(draw:FullPrizeDraw){try{await persistFullPrizeDraw(draw)}catch{/* Storage may not be migrated yet; verified API checking must still work. */}}
+
+export async function fetchVerifiedFullDraw(date?:string):Promise<FullPrizeDraw>{
+  if(date){
+    const normalized=normalizeDrawDate(date);
+    try{const cached=await getPersistedFullDraw(normalized);if(cached)return cached}catch{/* Fall through to verified official source. */}
+    const draw=await fetchOfficialFullDraw(normalized);
+    await persistBestEffort(draw);
+    return draw;
+  }
+  const draw=await fetchOfficialFullDraw();
+  await persistBestEffort(draw);
+  return draw;
+}
