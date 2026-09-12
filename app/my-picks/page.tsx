@@ -1,0 +1,1 @@
+import type{Metadata}from"next";import{getChatGPTUser}from"../chatgpt-auth";import{MyPicksPage}from"../../components/community-pages";export const dynamic="force-dynamic";export const metadata:Metadata={title:"My Picks",robots:{index:false,follow:false}};export default async function Page(){return <MyPicksPage signedIn={!!await getChatGPTUser()}/>}

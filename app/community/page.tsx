@@ -1,0 +1,1 @@
+import type{Metadata}from"next";import{CommunityPage}from"../../components/community-pages";export const metadata:Metadata={title:"Community Picks",description:"Transparent Thai GLO last 2-digit community picks and aggregate distribution."};export default function Page(){return <CommunityPage/>}

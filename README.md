@@ -1,5 +1,7 @@
 # ThaiLotto Insight
 
+Community lifecycle, privacy, scoring, moderation constraints, and rollback flags are documented in [COMMUNITY.md](COMMUNITY.md).
+
 ThaiLotto Insight is a public, mobile-first Thai Government Lottery results and historical analytics application. It never presents statistical patterns as guaranteed predictions.
 
 ## Current architecture

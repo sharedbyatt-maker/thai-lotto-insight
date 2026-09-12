@@ -1,0 +1,7 @@
+export const COMMUNITY_ENABLED=process.env.COMMUNITY_ENABLED!=="false";
+export const COMMUNITY_SUBMISSIONS_ENABLED=COMMUNITY_ENABLED&&process.env.COMMUNITY_SUBMISSIONS_ENABLED!=="false";
+export const LEADERBOARD_ENABLED=COMMUNITY_ENABLED&&process.env.LEADERBOARD_ENABLED!=="false";
+export const MIN_LEADERBOARD_DRAWS=5;
+export const COMMUNITY_DEADLINE_HOUR_ICT=14;
+
+export function communityFeatureState(){return{community:COMMUNITY_ENABLED,submissions:COMMUNITY_SUBMISSIONS_ENABLED,leaderboard:LEADERBOARD_ENABLED,minimumLeaderboardDraws:MIN_LEADERBOARD_DRAWS}}

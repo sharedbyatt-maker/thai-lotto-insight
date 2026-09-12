@@ -3,6 +3,7 @@ import {getDb} from "../db";
 import {importQueue,lotteryDraws,providerHealthEvents,rejectedDraws,syncRuns,systemEvents} from "../db/schema";
 import {GLO_DATE_API,GLO_LATEST_API,GLOProvider,LotteryDataProvider,ProviderPayloadError,ProviderRequestError,ProviderResult} from "./providers";
 import {ImportPersistence,processImportCandidate} from "./import-core";
+import {settleCommunityDraws} from "./community-db";
 
 export const HISTORICAL_START_DATE="2017-12-30";
 export const MINIMUM_ANALYSIS_DRAWS=100;
@@ -69,5 +70,6 @@ export async function importHistoricalBatch(limit=12,provider:LotteryDataProvide
   const status=failures&&imported===0&&duplicates===0?"failed":remaining?"partial":"success",completedAt=new Date().toISOString();
   await db.update(syncRuns).set({status,completedAt,importedCount:imported,invalidCount:invalid,duplicateCount:duplicates,processedCount:rows.length,errorMessage:failures?`${failures} transient request failure(s)`:null}).where(eq(syncRuns.id,run.id));
   await db.insert(systemEvents).values({level:status==="failed"?"error":"info",eventType:"historical_import",message:`Historical batch: ${imported} imported, ${duplicates} duplicate, ${invalid} rejected, ${noResult} no-result`,metadata:JSON.stringify({runId:run.id,remaining,failures}),createdAt:completedAt});
-  return{runId:run.id,status,processed:rows.length,imported,duplicates,rejected:invalid,noResult,failures,remaining,startedAt,completedAt};
+  const community=await settleCommunityDraws();
+  return{runId:run.id,status,processed:rows.length,imported,duplicates,rejected:invalid,noResult,failures,remaining,startedAt,completedAt,community};
 }

@@ -1,0 +1,1 @@
+import type{Metadata}from"next";import{ChampionsPage}from"../../components/community-pages";export const metadata:Metadata={title:"Community Champions",description:"Annual community awards from verified settled results."};export default function Page(){return <ChampionsPage/>}

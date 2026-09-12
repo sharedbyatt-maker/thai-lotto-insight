@@ -1,0 +1,5 @@
+import{getChatGPTUser}from"../../../chatgpt-auth";import{deleteCommunityAccount,myCommunity,updateCommunityName}from"../../../../lib/community-db";import{sameOrigin}from"../../../../lib/request-security";
+export const dynamic="force-dynamic";const denied=()=>Response.json({error:"Authentication required"},{status:401});
+export async function GET(){const user=await getChatGPTUser();if(!user)return denied();return Response.json(await myCommunity(user),{headers:{"cache-control":"private, no-store"}})}
+export async function PATCH(request:Request){if(!sameOrigin(request))return Response.json({error:"Invalid origin"},{status:403});const user=await getChatGPTUser();if(!user)return denied();try{const body=await request.json();return Response.json(await updateCommunityName(user,body.displayName))}catch(error){return Response.json({error:error instanceof Error?error.message:"Invalid request"},{status:400})}}
+export async function DELETE(request:Request){if(!sameOrigin(request))return Response.json({error:"Invalid origin"},{status:403});const user=await getChatGPTUser();if(!user)return denied();return Response.json(await deleteCommunityAccount(user))}

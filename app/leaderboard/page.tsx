@@ -1,0 +1,1 @@
+import type{Metadata}from"next";import{LeaderboardPage}from"../../components/community-pages";export const metadata:Metadata={title:"Community Leaderboard",description:"Difficulty-adjusted, verified community scoring with eligibility gates."};export default function Page(){return <LeaderboardPage/>}
