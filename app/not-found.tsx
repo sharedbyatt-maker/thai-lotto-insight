@@ -1,0 +1,2 @@
+import Link from"next/link";import{SearchX}from"lucide-react";
+export default function NotFound(){return <main id="main-content" className="platform-state"><span><SearchX size={28}/></span><small>404 · NOT FOUND</small><h1>This page is not available.</h1><p>The draw, number or page may not exist in the verified archive.</p><Link href="/results">Browse official results</Link><Link href="/">Return home</Link></main>}
