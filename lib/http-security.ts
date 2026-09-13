@@ -1,0 +1,2 @@
+const JSON_TYPE="application/json";
+export function validateRequestBody(request:Request,{maxBytes,contentType=JSON_TYPE}:{maxBytes:number;contentType?:string}){const length=Number(request.headers.get("content-length")??0);if(Number.isFinite(length)&&length>maxBytes)return Response.json({error:"Request body is too large"},{status:413});const actual=request.headers.get("content-type")?.split(";",1)[0]?.trim().toLowerCase();if(actual!==contentType)return Response.json({error:`Content-Type must be ${contentType}`},{status:415});return null}

@@ -1,0 +1,11 @@
+import test from"node:test";
+import assert from"node:assert/strict";
+import{readFileSync}from"node:fs";
+import{validateRequestBody}from"../lib/http-security.ts";
+const read=path=>readFileSync(new URL(`../${path}`,import.meta.url),"utf8");
+test("security headers constrain framing, sniffing, capabilities and content",()=>{const source=read("next.config.ts");for(const header of["Content-Security-Policy","frame-ancestors 'none'","X-Content-Type-Options","X-Frame-Options","Strict-Transport-Security","Permissions-Policy","Referrer-Policy"])assert.match(source,new RegExp(header.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")))});
+test("browser admin requests require same-origin while bearer automation remains supported",()=>{const source=read("lib/admin-auth.ts");assert.match(source,/if\(isAdminAuthorized\(request,null,environment\)\)return true/);assert.match(source,/if\(!sameOrigin\(request\)\)return false/)});
+test("JSON request guard rejects wrong media type and oversized declared bodies",()=>{assert.equal(validateRequestBody(new Request("https://site.test/api",{method:"POST",headers:{"content-type":"text/plain"}}),{maxBytes:10})?.status,415);assert.equal(validateRequestBody(new Request("https://site.test/api",{method:"POST",headers:{"content-type":"application/json","content-length":"11"}}),{maxBytes:10})?.status,413);assert.equal(validateRequestBody(new Request("https://site.test/api",{method:"POST",headers:{"content-type":"application/json; charset=utf-8","content-length":"10"}}),{maxBytes:10}),null)});
+test("public failures do not expose internal exception details",()=>{assert.doesNotMatch(read("app/api/dashboard/route.ts"),/detail:/);assert.doesNotMatch(read("app/api/community/route.ts"),/error instanceof Error/)});
+test("profile identifiers are rejected before database lookup",()=>{assert.match(read("app/api/community/profile/[publicId]/route.ts"),/\^member-\[0-9a-f\]\{16\}\$/)});
+test("security changes never mutate immutable prediction tables",()=>{const changed=["lib/http-security.ts","lib/admin-auth.ts","next.config.ts","app/api/check/route.ts","app/api/admin/restore/route.ts"].map(read).join("\n");assert.doesNotMatch(changed,/(UPDATE|DELETE FROM|INSERT INTO)\s+v3_predictions/i)});

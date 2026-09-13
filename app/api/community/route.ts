@@ -1,2 +1,2 @@
 import{publicCommunity}from"../../../lib/community-db";import{communityFeatureState}from"../../../lib/community-flags";
-export const dynamic="force-dynamic";export async function GET(){try{return Response.json({...communityFeatureState(),...(await publicCommunity())},{headers:{"cache-control":"public, max-age=30"}})}catch(error){return Response.json({error:error instanceof Error?error.message:"Community unavailable"},{status:503})}}
+export const dynamic="force-dynamic";export async function GET(){try{return Response.json({...communityFeatureState(),...(await publicCommunity())},{headers:{"cache-control":"public, max-age=30"}})}catch{return Response.json({error:"Community temporarily unavailable"},{status:503,headers:{"cache-control":"no-store"}})}}

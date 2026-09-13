@@ -1,8 +1,10 @@
 import {checkTicket,fetchVerifiedFullDraw,normalizeTicket} from "../../../lib/full-ticket-checker";
 import {consumeRateLimit} from "../../../lib/operational-guards";
+import {validateRequestBody} from "../../../lib/http-security";
 
 export async function POST(request:Request){
   try{
+    const invalid=validateRequestBody(request,{maxBytes:2048});if(invalid)return invalid;
     const rate=await consumeRateLimit(request,"ticket-check");if(!rate.allowed)return Response.json({status:"error",message:"Too many ticket checks. Please try again shortly."},{status:429,headers:{"Retry-After":String(rate.retryAfterSeconds)}});
     const body=await request.json() as {ticket?:unknown;date?:unknown};
     const ticket=normalizeTicket(body.ticket);
