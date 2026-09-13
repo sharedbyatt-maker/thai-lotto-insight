@@ -6,8 +6,7 @@ import {DATA_LICENSE_STATUS} from "../../../lib/importer";
 import {GLO_CATALOG_URL,GLO_RESOURCE_ID} from "../../../lib/providers";
 import {publicDataMetadata} from "../../../lib/freshness";
 import {commercialMonetizationGuard} from "../../../lib/commercial";
-import {analyzeDigitFirst,runDigitAblation} from "../../../lib/digit-engine";
-import {runPatternLab} from "../../../lib/pattern-lab";
+import {getAnalysisSnapshot} from "../../../lib/analysis-snapshot";
 
 export const dynamic="force-dynamic";
 export async function GET(){try{
@@ -31,7 +30,7 @@ export async function GET(){try{
   let picks:any[]=[],lockedEngine=null;if(run){picks=await db.select().from(predictions).where(eq(predictions.runId,run.id)).orderBy(predictions.rank).limit(10);lockedEngine=(await db.select().from(engineVersions).where(eq(engineVersions.id,run.engineVersionId)).limit(1))[0]??null}
   const lockedPrediction=run?{run,engine:lockedEngine,picks:picks.map(p=>({...p,components:safeObject(p.componentScores)}))}:null;
   const history=await db.select().from(predictionResults).orderBy(desc(predictionResults.id)).limit(20);
-  const enough=draws.length>=MIN_HISTORY,digitDraws=draws.map(d=>({drawDate:d.drawDate,last2:d.last2,firstPrize:d.firstPrize})),stats=enough?analyzeNumbers(digitDraws):[],digitCandidate=enough?runDigitAblation(digitDraws):null,digitFirst=digitCandidate?analyzeDigitFirst(digitDraws,{...digitCandidate.selectedConfig,targetDate:run?.drawDate}):null,patternLab=digitCandidate?runPatternLab(digitDraws,digitCandidate):null;
+  const enough=draws.length>=MIN_HISTORY,digitDraws=draws.map(d=>({drawDate:d.drawDate,last2:d.last2,firstPrize:d.firstPrize})),stats=enough?analyzeNumbers(digitDraws):[],snapshot=enough?await getAnalysisSnapshot(digitDraws,run?.drawDate):null,digitCandidate=snapshot?.digitCandidate??null,digitFirst=snapshot?.digitFirst??null,patternLab=snapshot?.patternLab??null;
   const dataMeta=publicDataMetadata({dataCutoff:latest?.drawDate??null,lastSuccessfulSync:lastSuccessfulSync?.completedAt??null});
   const status=!draws.length?(lastSync?.status==="failed"?"source_error":"sync_pending"):!enough?"insufficient_data":providerHealth.status==="unhealthy"?"source_error":dataMeta.freshness.isStale?"stale_data":"ready";
   return Response.json({status,statusLabel:status.toUpperCase().replaceAll("_"," "),latest,drawCount:draws.length,rejectedDrawCount:rejected,earliest:draws[0]?.drawDate??null,latestDate:latest?.drawDate??null,missingExpectedDraws,missingExpectedDrawDates,duplicateAttemptsPrevented:duplicateAttempts,lastSuccessfulImport,lastSuccessfulSync,lastSync,dataMeta,providerHealth,latestAudit,commercialMonetization:commercialMonetizationGuard(),activeSource:{name:"Government Lottery Office (GLO)",catalogUrl:GLO_CATALOG_URL,resourceId:GLO_RESOURCE_ID},licenseStatus:DATA_LICENSE_STATUS,minimumSampleThreshold:MIN_HISTORY,statisticalSampleSize:enough?draws.length:0,verificationSamples,statistics:stats,hotDigits:enough?digitStats(draws.map(d=>d.last2)):[],engine:engine??{version:null,parameters:JSON.stringify(DEFAULT_WEIGHTS),active:false},latestRun:run,picks,lockedPrediction,history,backtest,backtestReport:backtest?JSON.parse(backtest.splitMetadata):null,optimizer,ml,digitFirst,digitCandidate,patternLab,generatedAt:new Date().toISOString()},{headers:{"Cache-Control":"public, max-age=60, stale-while-revalidate=300"}});

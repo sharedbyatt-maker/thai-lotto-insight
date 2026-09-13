@@ -57,6 +57,13 @@
       "when": 1789286957998,
       "tag": "0007_full_prize_persistence",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789288176791,
+      "tag": "0008_lowly_puppet_master",
+      "breakpoints": true
     }
   ]
 }

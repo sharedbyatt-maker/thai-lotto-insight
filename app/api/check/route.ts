@@ -1,7 +1,9 @@
 import {checkTicket,fetchVerifiedFullDraw,normalizeTicket} from "../../../lib/full-ticket-checker";
+import {consumeRateLimit} from "../../../lib/operational-guards";
 
 export async function POST(request:Request){
   try{
+    const rate=await consumeRateLimit(request,"ticket-check");if(!rate.allowed)return Response.json({status:"error",message:"Too many ticket checks. Please try again shortly."},{status:429,headers:{"Retry-After":String(rate.retryAfterSeconds)}});
     const body=await request.json() as {ticket?:unknown;date?:unknown};
     const ticket=normalizeTicket(body.ticket);
     const date=typeof body.date==="string"&&body.date.trim()?body.date.trim():undefined;

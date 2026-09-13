@@ -77,6 +77,7 @@ export async function fetchVerifiedFullDraw(date?:string):Promise<FullPrizeDraw>
     await persistBestEffort(draw);
     return draw;
   }
+  try{const {getLatestPersistedFullDraw}=await import("./full-prize-store");const cached=await getLatestPersistedFullDraw();if(cached)return cached}catch{/* Fall through to verified official source. */}
   const draw=await fetchOfficialFullDraw();
   await persistBestEffort(draw);
   return draw;

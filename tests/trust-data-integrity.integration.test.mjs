@@ -47,6 +47,6 @@ test("community audit rows and full-prize snapshots survive empty-database parit
 });
 
 test("full-prize migration has matching journal metadata",()=>{
-  assert.equal(journal.entries.at(-1).tag,"0007_full_prize_persistence");
+  assert.ok(journal.entries.some(entry=>entry.tag==="0007_full_prize_persistence"));
   assert.doesNotThrow(()=>createTestDatabase());
 });

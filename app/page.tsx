@@ -10,7 +10,7 @@ type Data={status:string;message?:string;latest?:any;latestRun?:any;drawCount?:n
 
 export default function Home(){
   const{t}=useLanguage(),[data,setData]=useState<Data|null>(null);
-  useEffect(()=>{fetch("/api/dashboard").then(async r=>setData(await r.json())).catch(()=>setData({status:"source_error",message:"Data unavailable"}))},[]);
+  useEffect(()=>{fetch("/api/home").then(async r=>setData(await r.json())).catch(()=>setData({status:"source_error",message:"Data unavailable"}))},[]);
   const status=data?.status==="ready"?t("ready"):data?.status==="stale_data"?t("stale"):data?.status==="source_error"?t("sourceError"):t("syncPending"),latest=data?.latest,picks=(data?.lockedPrediction?.picks??data?.picks??[]).slice(0,5);
   return <main id="main-content" className="premium-home" tabIndex={-1}><PublicHeader/>
     <section className="premium-home-hero"><div className="home-orb home-orb-a"/><div className="home-orb home-orb-b"/><div className="home-orb home-orb-c"/><div className="home-grid"/><div className="premium-home-inner">
