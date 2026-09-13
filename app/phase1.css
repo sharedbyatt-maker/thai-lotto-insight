@@ -1,0 +1,20 @@
+.result-actions{display:flex;justify-content:flex-end;gap:.55rem;padding:.75rem 1.25rem;border-bottom:1px solid #e5ebe7;background:#fff}
+.result-actions button,.prize-pagination button{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;border:1px solid #d7e1db;border-radius:.75rem;background:#fff;padding:.58rem .8rem;color:#415047;font-size:.75rem;font-weight:850;cursor:pointer}
+.result-actions button:hover,.prize-pagination button:hover:not(:disabled){border-color:#a9c5b4;background:#f3f8f5;color:#0b6b46}
+.feature-number{display:inline-flex;align-items:center;gap:.35rem;border:0;background:transparent;color:inherit;cursor:pointer}
+.feature-number svg,.result-number-tile svg{flex:none;color:#91a198;opacity:0;transition:.15s}
+.feature-number:hover svg,.feature-number:focus-visible svg,.result-number-tile:hover svg,.result-number-tile:focus-visible svg{opacity:1}
+.prize-browser-tools{display:grid;grid-template-columns:1fr auto;gap:.75rem;padding:1rem 1.25rem;border-top:1px solid #e2e9e4;background:#f8faf8}
+.prize-browser-tools label{display:flex;align-items:center;gap:.65rem;min-width:0;border:1px solid #d5dfd8;border-radius:.9rem;background:#fff;padding:0 .9rem;color:#6b786f}
+.prize-browser-tools input{min-width:0;width:100%;border:0;background:transparent;padding:.78rem 0;outline:0}
+.prize-browser-tools select{border:1px solid #d5dfd8;border-radius:.9rem;background:#fff;padding:.75rem 2rem .75rem .85rem;font-weight:800;color:#415047}
+.result-number-tile{display:flex;align-items:center;justify-content:center;gap:.4rem;cursor:pointer}
+.result-number-tile span{min-width:0}
+.prize-pagination{display:flex;align-items:center;justify-content:center;gap:1rem;margin-top:1rem}
+.prize-pagination button:disabled{cursor:not-allowed;opacity:.42}
+.prize-pagination b{font-size:.75rem;color:#647168}
+.result-sheet-skeleton{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;padding:1.3rem}
+.result-sheet-skeleton i{height:7rem;border-radius:1rem;background:linear-gradient(90deg,#eef3ef,#f8faf8,#eef3ef);background-size:200% 100%;animation:result-shimmer 1.4s infinite}
+@keyframes result-shimmer{to{background-position:-200% 0}}
+@media(max-width:560px){.result-actions{justify-content:stretch}.result-actions button{flex:1;padding:.62rem .35rem}.prize-browser-tools{grid-template-columns:1fr}.result-sheet-skeleton{grid-template-columns:1fr 1fr}.prize-pagination button span{display:none}}
+@media print{header,footer,.result-actions,.prize-browser-tools,.result-check-button,.prize-pagination,.panel,.pill{display:none!important}body,.result-sheet{background:#fff!important}.result-sheet{border:0!important;box-shadow:none!important}.result-prize-sections{display:block!important}.result-number-grid{grid-template-columns:repeat(5,1fr)!important}.result-number-tile{break-inside:avoid}.result-number-tile svg{display:none}}
