@@ -6,12 +6,12 @@ import {ArrowRight,BarChart3,BrainCircuit,CheckCircle2,Clock3,Newspaper,ShieldCh
 import {PublicHeader,PublicFooter} from "../components/public-shell";
 import {useLanguage} from "../components/language-provider";
 
-type Data={status:string;message?:string;latest?:any;latestRun?:any;drawCount?:number;picks?:any[];backtest?:any;dataMeta?:any};
+type Data={status:string;message?:string;latest?:any;latestRun?:any;drawCount?:number;picks?:any[];lockedPrediction?:{picks?:any[]};backtest?:any;dataMeta?:any};
 
 export default function Home(){
   const{t}=useLanguage(),[data,setData]=useState<Data|null>(null);
   useEffect(()=>{fetch("/api/dashboard").then(async r=>setData(await r.json())).catch(()=>setData({status:"source_error",message:"Data unavailable"}))},[]);
-  const status=data?.status==="ready"?t("ready"):data?.status==="stale_data"?t("stale"):data?.status==="source_error"?t("sourceError"):t("syncPending"),latest=data?.latest,picks=data?.picks?.slice(0,5)??[];
+  const status=data?.status==="ready"?t("ready"):data?.status==="stale_data"?t("stale"):data?.status==="source_error"?t("sourceError"):t("syncPending"),latest=data?.latest,picks=(data?.lockedPrediction?.picks??data?.picks??[]).slice(0,5);
   return <main id="main-content" className="premium-home" tabIndex={-1}><PublicHeader/>
     <section className="premium-home-hero"><div className="home-orb home-orb-a"/><div className="home-orb home-orb-b"/><div className="home-orb home-orb-c"/><div className="home-grid"/><div className="premium-home-inner">
       <div className="home-hero-copy"><span className="home-live-pill"><i/>{status}<b>Official data</b></span><h1>Every draw.<br/><em>Clearly understood.</em></h1><p>Official Thai lottery results, instant ticket checking and transparent number intelligence—together in one trusted place.</p><div className="home-hero-actions"><Link className="home-primary" href="/check"><TicketCheck size={18}/>Check my ticket<ArrowRight size={16}/></Link><Link className="home-secondary" href="/2-digit"><BrainCircuit size={17}/>2-Digit intelligence</Link></div><div className="home-trust"><span><ShieldCheck size={15}/> GLO-sourced results</span><span><CheckCircle2 size={15}/> Leading zeros preserved</span><span><Sparkles size={15}/> Explainable scores</span></div></div>

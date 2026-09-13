@@ -75,7 +75,7 @@ The production build refuses an attempt to enable monetization without explicit 
 5. Ask ChatGPT Work to deploy an empty recovery database and restore the newest `thai-lotto-insight-backup.json`. The protected restore API refuses to overwrite a non-empty database and requires explicit confirmation. A partially interrupted restore can be safely resumed because inserts are idempotent.
 6. After restoration, run **Audit all draws**, confirm zero anomalies, then run analysis. Compare verified count, earliest/latest dates, prediction runs, and engine version with the backup report before reopening normal sync.
 
-The full JSON backup contains normalized draws, rejected records, queue state, engines, locked predictions, evaluations, statistics, backtests, optimizer/ML records, sync history, source verifications, provider health, audits, and system events. This prevents the verified historical set from depending on one live D1 database.
+The V3.3 full JSON backup contains normalized draws, rejected records, queue state, engines, locked predictions, evaluations, statistics, backtests, optimizer/ML records, sync history, source verifications, provider health, audits, system events, community profiles and immutable pick revisions, settlements, favorites, notifications, rate-limit state, full-prize snapshots and full-prize backfill state. Restore accepts both legacy V3.2 backups and complete V3.3 backups; tables absent from a legacy backup remain empty. This prevents the verified historical set and community audit history from depending on one live D1 database.
 
 ## Freshness and source health
 
