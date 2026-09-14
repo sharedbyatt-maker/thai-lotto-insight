@@ -7,7 +7,7 @@ import {settleCommunityDraws} from "./community-db";
 
 export const HISTORICAL_START_DATE="2017-12-30";
 export const MINIMUM_ANALYSIS_DRAWS=100;
-export const DATA_LICENSE_STATUS="COMMERCIAL DATA LICENSE — UNRESOLVED";
+export const DATA_LICENSE_STATUS="OFFICIAL-SOURCE ATTRIBUTION · INDEPENDENT SERVICE";
 
 type Candidate={candidateDate:string;slotDate:string};
 const date=(y:number,m:number,d:number)=>new Date(Date.UTC(y,m-1,d)).toISOString().slice(0,10);

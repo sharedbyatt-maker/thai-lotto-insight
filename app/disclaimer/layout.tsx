@@ -1,0 +1,1 @@
+import type{Metadata}from"next";export const metadata:Metadata={title:"Disclaimer",description:"Independent-service, official-result verification and prediction limitations.",alternates:{canonical:"/disclaimer"}};export default function Layout({children}:{children:React.ReactNode}){return children}

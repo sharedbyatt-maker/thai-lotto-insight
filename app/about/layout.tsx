@@ -1,0 +1,1 @@
+import type{Metadata}from"next";export const metadata:Metadata={title:"About",description:"About ThaiLotto Insight, an independent Thai lottery information and analysis service.",alternates:{canonical:"/about"}};export default function Layout({children}:{children:React.ReactNode}){return children}

@@ -1,0 +1,1 @@
+import type{Metadata}from"next";export const metadata:Metadata={title:"Cookie Policy",description:"Essential and optional cookie use on ThaiLotto Insight.",alternates:{canonical:"/cookies"}};export default function Layout({children}:{children:React.ReactNode}){return children}

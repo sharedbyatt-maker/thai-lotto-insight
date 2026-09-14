@@ -1,0 +1,1 @@
+import type{Metadata}from"next";export const metadata:Metadata={title:"Privacy Policy",description:"How ThaiLotto Insight handles privacy, preferences, security data and advertising consent.",alternates:{canonical:"/privacy"}};export default function Layout({children}:{children:React.ReactNode}){return children}
