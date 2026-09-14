@@ -1,2 +1,2 @@
-import {fetchVerifiedFullDraw} from "../../../../lib/full-ticket-checker";
-export async function GET(_:Request,{params}:{params:Promise<{date:string}>}){try{const{date}=await params;const draw=await fetchVerifiedFullDraw(date);return Response.json({status:"ready",draw})}catch(error){return Response.json({status:"unavailable",message:error instanceof Error?error.message:"Official full-prize data unavailable"},{status:502})}}
+import {getStoredFullDraw} from "../../../../lib/full-ticket-checker";
+export async function GET(_:Request,{params}:{params:Promise<{date:string}>}){try{const{date}=await params;const draw=await getStoredFullDraw(date);return Response.json({status:"ready",servedFrom:"verified_database",draw},{headers:{"Cache-Control":"public, max-age=3600, stale-while-revalidate=86400"}})}catch(error){return Response.json({status:"unavailable",message:error instanceof Error?error.message:"Verified full-prize data unavailable"},{status:404})}}

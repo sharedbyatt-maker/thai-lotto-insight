@@ -67,18 +67,5 @@ export async function fetchOfficialFullDraw(date?:string):Promise<FullPrizeDraw>
   return normalizeFullGloResponse(raw,GLO_LATEST_API);
 }
 
-async function persistBestEffort(draw:FullPrizeDraw){try{const {persistFullPrizeDraw}=await import("./full-prize-store");await persistFullPrizeDraw(draw)}catch{/* Storage may not be migrated yet; verified API checking must still work. */}}
-
-export async function fetchVerifiedFullDraw(date?:string):Promise<FullPrizeDraw>{
-  if(date){
-    const normalized=normalizeDrawDate(date);
-    try{const {getPersistedFullDraw}=await import("./full-prize-store");const cached=await getPersistedFullDraw(normalized);if(cached)return cached}catch{/* Fall through to verified official source. */}
-    const draw=await fetchOfficialFullDraw(normalized);
-    await persistBestEffort(draw);
-    return draw;
-  }
-  try{const {getLatestPersistedFullDraw}=await import("./full-prize-store");const cached=await getLatestPersistedFullDraw();if(cached)return cached}catch{/* Fall through to verified official source. */}
-  const draw=await fetchOfficialFullDraw();
-  await persistBestEffort(draw);
-  return draw;
-}
+/** Public reads are database-only. Official network access belongs to sync. */
+export async function getStoredFullDraw(date?:string):Promise<FullPrizeDraw>{const store=await import("./full-prize-store");const draw=date?await store.getPersistedFullDraw(normalizeDrawDate(date)):await store.getLatestPersistedFullDraw();if(!draw)throw new Error(date?"This draw is not in the verified result archive yet.":"No verified result has been stored yet.");return draw}

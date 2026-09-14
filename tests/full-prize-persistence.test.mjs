@@ -11,7 +11,7 @@ test("full-prize migration is additive and normalized",()=>{assert.match(migrati
 
 test("persisted prize snapshots are versioned by source hash",()=>{assert.match(store,/ON CONFLICT\(draw_date,source_hash\)/);assert.match(store,/WHERE draw_date=\? AND source_hash=\?/);assert.match(store,/SET is_active=0/);assert.match(store,/INSERT OR IGNORE INTO v3_full_prize_entries/)});
 
-test("historical checker uses persistent verified data before official fetch",()=>{const cache=checker.indexOf("getPersistedFullDraw");const fetch=checker.indexOf("fetchOfficialFullDraw(normalized)");assert.ok(cache>=0&&fetch>cache);assert.match(checker,/Fall through to verified official source/);assert.match(checker,/Storage may not be migrated yet/)});
+test("public checker is database-only with no official network fallback",()=>{const publicReader=checker.slice(checker.indexOf("export async function getStoredFullDraw"));assert.match(publicReader,/getPersistedFullDraw/);assert.match(publicReader,/getLatestPersistedFullDraw/);assert.doesNotMatch(publicReader,/fetchOfficialFullDraw|fetch\(/)});
 
 test("backfill control is admin protected and bounded",()=>{assert.match(route,/requireAdminApi/);assert.match(route,/runFullPrizeBackfill/);const worker=readFileSync(new URL("../lib/full-prize-backfill.ts",import.meta.url),"utf8");assert.match(worker,/Math\.min\(10/);assert.match(worker,/fetchOfficialFullDraw/);assert.match(worker,/persistFullPrizeDraw/);assert.match(worker,/markBackfillAttempt/)});
 
