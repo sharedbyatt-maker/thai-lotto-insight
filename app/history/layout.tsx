@@ -1,0 +1,1 @@
+import type{Metadata}from"next";export const metadata:Metadata={title:"Prediction History",description:"Review immutable prediction runs, actual outcomes and chronological walk-forward performance.",alternates:{canonical:"/history"}};export default function Layout({children}:{children:React.ReactNode}){return children}

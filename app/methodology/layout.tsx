@@ -1,0 +1,1 @@
+import type{Metadata}from"next";export const metadata:Metadata={title:"Methodology and Limitations",description:"How ThaiLotto Insight verifies data, prevents future-data leakage and reports statistical limitations.",alternates:{canonical:"/methodology"}};export default function Layout({children}:{children:React.ReactNode}){return children}
