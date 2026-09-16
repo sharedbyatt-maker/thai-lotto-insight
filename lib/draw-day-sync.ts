@@ -19,6 +19,14 @@ export function isDrawSyncDay(now = new Date()) {
   // date is still validated and unique constraints prevent duplicate writes.
   return day === 1 || day === 2 || day === 16 || day === 17;
 }
+export function isDrawSyncWindow(now = new Date()) {
+  const bangkok = new Date(now.getTime() + BANGKOK_OFFSET_MS);
+  const hour = bangkok.getUTCHours();
+  // Results are released during the afternoon. Polling only in this bounded
+  // window keeps the public request path database-only while reducing the
+  // delay between the final official publication and the stored result.
+  return isDrawSyncDay(now) && hour >= 14 && hour <= 20;
+}
 export function retryDelayMs(attempt: number) {
   return Math.min(8000, 500 * 2 ** Math.max(0, attempt - 1));
 }
@@ -65,7 +73,7 @@ async function persistSummary(draw: FullPrizeDraw) {
 }
 
 export async function runDrawDaySync(now = new Date(), force = false) {
-  if (!force && !isDrawSyncDay(now))
+  if (!force && !isDrawSyncWindow(now))
     return {
       status: "skipped",
       reason: "not_draw_window",

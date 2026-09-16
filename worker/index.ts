@@ -43,7 +43,11 @@ const worker = {
 
     return handler.fetch(request, env, ctx);
   },
-  async scheduled(_controller:unknown,_env:Env,ctx:ExecutionContext){ctx.waitUntil(runDrawDaySync().catch(()=>undefined))},
+  async scheduled(_controller:unknown,_env:Env,ctx:ExecutionContext){
+    ctx.waitUntil(runDrawDaySync().catch((error)=>{
+      console.error("draw-day-sync failed",error instanceof Error?error.message:"unknown error");
+    }));
+  },
 };
 
 export default worker;

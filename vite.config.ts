@@ -14,7 +14,10 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
-  triggers: { crons: ["*/30 * * * *"] },
+  // The sync function itself restricts network work to the Bangkok draw
+  // window. A five-minute trigger avoids leaving a just-published result stale
+  // until the next half-hour boundary.
+  triggers: { crons: ["*/5 * * * *"] },
   d1_databases: d1
     ? [
         {

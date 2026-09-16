@@ -24,11 +24,13 @@ test("stored draw reader has no network fallback", () => {
 test("scheduled sync is draw-window gated, retries exponentially, and deduplicates", () => {
   const source = read("lib/draw-day-sync.ts");
   assert.match(source, /day\s*===\s*1\s*\|\|\s*day\s*===\s*2\s*\|\|\s*day\s*===\s*16\s*\|\|\s*day\s*===\s*17/);
+  assert.match(source, /hour\s*>=\s*14\s*&&\s*hour\s*<=\s*20/);
   assert.match(source, /500\s*\*\s*2\s*\*\*/);
   assert.match(source, /status:\s*\"duplicate\"/);
   assert.match(source, /ON CONFLICT\(draw_date\) DO NOTHING/);
   assert.match(read("worker/index.ts"), /scheduled/);
-  assert.match(read("vite.config.ts"), /\*\/30 \* \* \* \*/);
+  assert.match(read("vite.config.ts"), /\*\/5 \* \* \* \*/);
+  assert.match(read("worker/index.ts"), /draw-day-sync failed/);
 });
 test("public metadata names the cutoff and last verified storage time", () => {
   const source = read("lib/i18n.ts");
