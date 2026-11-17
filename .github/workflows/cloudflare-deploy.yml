@@ -2,6 +2,10 @@ name: Deploy Cloudflare Worker
 on:
   workflow_dispatch:
     inputs:
+      seed_latest:
+        description: Import and verify the latest official result
+        type: boolean
+        default: false
       enable_cron:
         description: Enable scheduled draw sync after D1 has been seeded or restored
         type: boolean
@@ -36,4 +40,27 @@ jobs:
             node --input-type=module -e 'import fs from "node:fs"; const path="dist/server/wrangler.production.json"; const config=JSON.parse(fs.readFileSync(path,"utf8")); config.triggers={crons:[]}; fs.writeFileSync(path,JSON.stringify(config,null,2)+"\n")'
           fi
       - run: npx wrangler d1 migrations apply DB --remote --config dist/server/wrangler.production.json
-      - run: npx wrangler deploy --config dist/server/wrangler.production.json
+      - name: Deploy and optionally verify the latest draw
+        env:
+          SEED_LATEST: ${{ inputs.seed_latest }}
+        run: |
+          set -euo pipefail
+          config=dist/server/wrangler.production.json
+          npx wrangler deploy --config "$config" | tee "$RUNNER_TEMP/lotto-deploy.log"
+          if [ "$SEED_LATEST" != "true" ]; then exit 0; fi
+          origin=$(sed -nE 's|^[[:space:]]*(https://thai-lotto-insight\.[a-z0-9-]+\.workers\.dev)[[:space:]]*$|\1|p' "$RUNNER_TEMP/lotto-deploy.log" | head -n 1)
+          test -n "$origin"
+          secrets=$(npx wrangler secret list --format json --config "$config")
+          if jq -e 'any(.[]; .name == "SYNC_TOKEN")' >/dev/null <<< "$secrets"; then
+            echo "::error::An admin sync secret already exists."
+            exit 1
+          fi
+          secret=$(openssl rand -hex 32)
+          echo "::add-mask::$secret"
+          printf '%s\n' "$secret" | npx wrangler secret put SYNC_TOKEN --config "$config"
+          trap 'npx wrangler secret delete SYNC_TOKEN --config "$config" --force' EXIT
+          result=$(curl --silent --show-error --connect-timeout 10 --max-time 90 --retry 5 --retry-delay 5 --retry-all-errors --fail-with-body -X POST -H "Authorization: Bearer $secret" "$origin/api/admin/draw-sync")
+          draw=$(jq -er 'select(.status == "imported" or .status == "updated" or .status == "duplicate") | .drawDate' <<< "$result")
+          curl --fail --silent --show-error "$origin/api/results/$draw" | jq -e --arg date "$draw" '.. | objects | select(.drawDate? == $date)' >/dev/null
+          echo "Verified draw $draw at $origin/api/results/$draw"
+
