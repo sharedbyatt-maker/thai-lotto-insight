@@ -43,8 +43,8 @@ const worker = {
 
     return handler.fetch(request, env, ctx);
   },
-  async scheduled(_controller:unknown,_env:Env,ctx:ExecutionContext){
-    ctx.waitUntil(runDrawDaySync().catch((error)=>{
+  async scheduled(controller:{scheduledTime:number},_env:Env,ctx:ExecutionContext){
+    ctx.waitUntil(runDrawDaySync(new Date(controller.scheduledTime)).catch((error)=>{
       console.error("draw-day-sync failed",error instanceof Error?error.message:"unknown error");
     }));
   },

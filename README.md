@@ -72,14 +72,14 @@ The production build refuses an attempt to enable monetization without explicit 
 2. Under **Backup and exports**, download **Full backup JSON** after every new draw. Keep copies in at least two safe locations, such as your computer and a private cloud drive.
 3. CSV buttons separately export verified draws, rejected draws, prediction history, and backtest results. The engine configuration is exported as JSON. Digit fields remain quoted strings so leading zeroes are preserved.
 4. If production data looks corrupted, stop manual syncs and download one final backup if the admin page still works. Do not edit the JSON file.
-5. Ask ChatGPT Work to deploy an empty recovery database and restore the newest `thai-lotto-insight-backup.json`. The protected restore API refuses to overwrite a non-empty database and requires explicit confirmation. A partially interrupted restore can be safely resumed because inserts are idempotent.
+5. Ask ChatGPT Work to deploy an empty recovery database and restore the newest `thai-lotto-insight-backup.json`. The protected restore API refuses to overwrite a non-empty database and requires explicit confirmation. The recovery runs in one database transaction. If interrupted before commit, retry the same backup against the still-empty recovery database.
 6. After restoration, run **Audit all draws**, confirm zero anomalies, then run analysis. Compare verified count, earliest/latest dates, prediction runs, and engine version with the backup report before reopening normal sync.
 
 The V3.3 full JSON backup contains normalized draws, rejected records, queue state, engines, locked predictions, evaluations, statistics, backtests, optimizer/ML records, sync history, source verifications, provider health, audits, system events, community profiles and immutable pick revisions, settlements, favorites, notifications, rate-limit state, full-prize snapshots and full-prize backfill state. Restore accepts both legacy V3.2 backups and complete V3.3 backups; tables absent from a legacy backup remain empty. This prevents the verified historical set and community audit history from depending on one live D1 database.
 
 ## Freshness and source health
 
-Public data becomes `STALE DATA` when no successful synchronization has occurred for more than 72 hours. Public APIs and pages expose the data cutoff, last successful sync, active source, and freshness state. Provider monitoring retains request success/failure, validation failures, latency, and consecutive failures; verified database data remains readable during a temporary provider outage.
+Public data becomes `STALE DATA` when the expected draw is still missing at 21:00 Bangkok time on its scheduled day. Last successful sync remains a separate timestamp. Public APIs and pages expose the data cutoff, last successful sync, active source, and freshness state. Provider monitoring retains request success/failure, validation failures, latency, and consecutive failures; verified database data remains readable during a temporary provider outage.
 
 ## Deployment
 

@@ -1,3 +1,4 @@
+import { bangkokDate, nextDrawDate } from "./draw-calendar";
 import {and,desc,eq,sql} from "drizzle-orm";
 import {getDb} from "../db";
 import {backtestResults,backtestRuns,engineVersions,lotteryDraws,mlRuns,numberStatistics,optimizerRuns,predictionResults,predictionRuns,predictions} from "../db/schema";
@@ -6,7 +7,6 @@ import {backtestStatisticalReport,selectWeights} from "./optimizer";
 
 export const ML_MINIMUM_DRAWS=500;
 function range(draws:Draw[],idx:number[]){return idx.length?`${draws[idx[0]].drawDate}..${draws[idx.at(-1)!].drawDate}`:"none"}
-function nextDrawDate(last:string){const d=new Date(last+"T00:00:00Z"),y=d.getUTCFullYear(),m=d.getUTCMonth()+1,day=d.getUTCDate();if(day<16)return `${y}-${String(m).padStart(2,"0")}-16`;const nextM=m===12?1:m+1,nextY=m===12?y+1:y,nextDay=nextM===1||nextM===5?2:1;return `${nextY}-${String(nextM).padStart(2,"0")}-${String(nextDay).padStart(2,"0")}`}
 
 export async function runAnalysisPipeline(){
   const db=getDb(),rows=await db.select().from(lotteryDraws).where(eq(lotteryDraws.validationStatus,"valid")).orderBy(lotteryDraws.drawDate),draws=rows.map(x=>({drawDate:x.drawDate,last2:x.last2}));
@@ -29,7 +29,7 @@ export async function runAnalysisPipeline(){
   if(!lastMl||lastMl.sampleSize!==draws.length)await db.insert(mlRuns).values({status:draws.length<ML_MINIMUM_DRAWS?"scientifically_unjustified":"experimental_not_promoted",reason:draws.length<ML_MINIMUM_DRAWS?`Fewer than ${ML_MINIMUM_DRAWS} draws gives fewer than five observations per 00–99 class on average; ML comparison would be unstable.`:"ML models require a separate reproducible training implementation before promotion.",minimumRequired:ML_MINIMUM_DRAWS,sampleSize:draws.length,splitMetadata:JSON.stringify({train:range(draws,selected.split.train),validation:range(draws,selected.split.validation),lockedTest:range(draws,selected.split.lockedTest),chronological:true,randomShuffle:false}),results:JSON.stringify({randomBaseline:{top1:1,top3:3,top5:5,top10:10},statisticalEngine:selected.lockedTest,logisticRegression:null,randomForest:null,gradientBoosting:null}),createdAt:now});
   await evaluateLockedPredictions(rows,now);
   const target=nextDrawDate(rows.at(-1)!.drawDate);
-  if(target>new Date().toISOString().slice(0,10)){
+  if(target && target>bangkokDate()){
     const inserted=await db.insert(predictionRuns).values({drawDate:target,engineVersionId:engine.id,parameters:JSON.stringify(selected.weights),dataCutoff:rows.at(-1)!.drawDate,generatedAt:now,lockedAt:""}).onConflictDoNothing({target:predictionRuns.drawDate}).returning({id:predictionRuns.id});
     if(inserted[0]){
       for(let i=0;i<stats.length;i+=10)await db.insert(predictions).values(stats.slice(i,i+10).map(x=>({runId:inserted[0].id,number:x.number,score:x.score,componentScores:JSON.stringify(x.componentScores),rank:x.rank,createdAt:now})));
