@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "ThaiLotto Insight",
+    "slug": "thai-lotto-insight",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "android": {"package": "com.thailottoinsight.app", "versionCode": 1},
+    "ios": {"bundleIdentifier": "com.thailottoinsight.app"}
+  }
+}

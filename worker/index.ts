@@ -6,6 +6,7 @@ import {runDrawDaySync} from "../lib/draw-day-sync";
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  THAI_LOTTO_DIRECT_CLOUDFLARE?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -41,6 +42,14 @@ const worker = {
       }, allowedWidths);
     }
 
+    if (env.THAI_LOTTO_DIRECT_CLOUDFLARE === "true") {
+      // A direct Workers URL has no trusted Sites identity proxy.
+      const headers = new Headers(request.headers);
+      for (const key of [...headers.keys()]) {
+        if (key.startsWith("oai-authenticated-user-")) headers.delete(key);
+      }
+      request = new Request(request, { headers });
+    }
     return handler.fetch(request, env, ctx);
   },
   async scheduled(controller:{scheduledTime:number},_env:Env,ctx:ExecutionContext){
