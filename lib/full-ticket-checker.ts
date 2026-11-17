@@ -5,7 +5,7 @@ export type PrizeCategory="FIRST_PRIZE"|"NEAR_FIRST_PRIZE"|"FRONT_3"|"LAST_3"|"L
 export type Completeness="FULL_PRIZE_SET_VERIFIED"|"SUMMARY_VERIFIED";
 export type FullPrizeDraw={drawDate:string;firstPrize:string;nearFirst:string[];front3:string[];last3:string[];last2:string;secondPrize:string[];thirdPrize:string[];fourthPrize:string[];fifthPrize:string[];source:string;sourceUrl:string;sourceHash:string;verifiedAt:string;completeness:Completeness};
 export type TicketMatch={category:PrizeCategory;matchedNumber:string;verificationSource:string};
-export type TicketCheckResult={ticket:string;drawDate:string;isWinner:boolean;matchedPrizes:TicketMatch[];highestPrizeCategory:PrizeCategory|null;officialSource:string;verificationStatus:Completeness;sourceHash:string};
+export type TicketCheckResult={ticket:string;drawDate:string;isWinner:boolean|null;matchedPrizes:TicketMatch[];highestPrizeCategory:PrizeCategory|null;officialSource:string;verificationStatus:Completeness;sourceHash:string};
 
 const THAI_DIGITS="๐๑๒๓๔๕๖๗๘๙";
 const thaiDigits=(s:string)=>s.replace(/[๐-๙]/g,c=>String(THAI_DIGITS.indexOf(c)));
@@ -34,8 +34,21 @@ export async function normalizeFullGloResponse(raw:unknown,sourceUrl:string,requ
   const thirdPrize=exactList(deepFind(payload,"third"),6,"third");
   const fourthPrize=exactList(deepFind(payload,"fourth"),6,"fourth");
   const fifthPrize=exactList(deepFind(payload,"fifth"),6,"fifth");
-  const completeness:Completeness=nearFirst.length>0&&front3.length>0&&last3.length>0&&secondPrize.length>0&&thirdPrize.length>0&&fourthPrize.length>0&&fifthPrize.length>0?"FULL_PRIZE_SET_VERIFIED":"SUMMARY_VERIFIED";
-  return{drawDate,firstPrize,nearFirst,front3,last3,last2,secondPrize,thirdPrize,fourthPrize,fifthPrize,source:"Government Lottery Office (GLO)",sourceUrl,sourceHash:await digest(raw),verifiedAt:new Date().toISOString(),completeness};
+  const draw = {drawDate,firstPrize,nearFirst,front3,last3,last2,secondPrize,thirdPrize,fourthPrize,fifthPrize,source:"Government Lottery Office (GLO)",sourceUrl,sourceHash:await digest(raw),verifiedAt:new Date().toISOString()};
+  return {...draw,completeness:prizeCompleteness(draw)};
+}
+
+// GLO L6 prize structure: https://api.glo.or.th/url/oLWb6KhXklY2
+export function prizeCompleteness(draw: Omit<FullPrizeDraw, "completeness">): Completeness {
+  const counts = [
+    [draw.nearFirst, 2, 6], [draw.front3, 2, 3], [draw.last3, 2, 3],
+    [draw.secondPrize, 5, 6], [draw.thirdPrize, 10, 6],
+    [draw.fourthPrize, 50, 6], [draw.fifthPrize, 100, 6],
+  ] as const;
+  return /^\d{6}$/.test(draw.firstPrize) && /^\d{2}$/.test(draw.last2) &&
+    counts.every(([numbers, expected, digits]) => numbers.length === expected && new Set(numbers).size === expected &&
+      numbers.every(number => number.length === digits && /^\d+$/.test(number)))
+    ? "FULL_PRIZE_SET_VERIFIED" : "SUMMARY_VERIFIED";
 }
 
 const hierarchy:PrizeCategory[]=["FIRST_PRIZE","NEAR_FIRST_PRIZE","SECOND_PRIZE","THIRD_PRIZE","FOURTH_PRIZE","FIFTH_PRIZE","FRONT_3","LAST_3","LAST_2"];
@@ -52,7 +65,9 @@ export function checkTicket(ticketValue:unknown,draw:FullPrizeDraw):TicketCheckR
   for(const n of draw.last3)if(ticket.slice(-3)===n)add("LAST_3",n);
   if(ticket.slice(-2)===draw.last2)add("LAST_2",draw.last2);
   matches.sort((a,b)=>hierarchy.indexOf(a.category)-hierarchy.indexOf(b.category));
-  return{ticket,drawDate:draw.drawDate,isWinner:matches.length>0,matchedPrizes:matches,highestPrizeCategory:matches[0]?.category??null,officialSource:draw.source,verificationStatus:draw.completeness,sourceHash:draw.sourceHash};
+  const completeness = prizeCompleteness(draw);
+  const isWinner = matches.length > 0 ? true : completeness === "FULL_PRIZE_SET_VERIFIED" ? false : null;
+  return{ticket,drawDate:draw.drawDate,isWinner,matchedPrizes:matches,highestPrizeCategory:matches[0]?.category??null,officialSource:draw.source,verificationStatus:completeness,sourceHash:draw.sourceHash};
 }
 
 async function post(url:string,body?:unknown){const response=await fetch(url,{method:"POST",headers:{"content-type":"application/json","accept":"application/json","user-agent":"ThaiLottoInsight/3.2 (+full-ticket-checker)"},body:body===undefined?undefined:JSON.stringify(body),cache:"no-store",signal:AbortSignal.timeout(15000)});const text=await response.text();if(!response.ok)throw new Error(`GLO HTTP ${response.status}`);try{return JSON.parse(text)}catch{throw new Error("GLO returned non-JSON data")}}

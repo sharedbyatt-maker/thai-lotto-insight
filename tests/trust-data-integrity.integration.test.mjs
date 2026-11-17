@@ -7,7 +7,7 @@ const dashboard=readFileSync(new URL("../app/api/dashboard/route.ts",import.meta
 const page=readFileSync(new URL("../app/2-digit/page.tsx",import.meta.url),"utf8");
 const home=readFileSync(new URL("../app/page.tsx",import.meta.url),"utf8");
 const backupRoute=readFileSync(new URL("../app/api/admin/export/[kind]/route.ts",import.meta.url),"utf8");
-const restoreRoute=readFileSync(new URL("../app/api/admin/restore/route.ts",import.meta.url),"utf8");
+const restoreRoute=readFileSync(new URL("../lib/backup-restore.ts",import.meta.url),"utf8");
 const journal=JSON.parse(readFileSync(new URL("../drizzle/meta/_journal.json",import.meta.url),"utf8"));
 
 const durable=["communityUsers","communitySubmissions","communitySubmissionRevisions","communitySettlements","communityFavorites","communityNotifications","communityRateLimits","fullPrizeDraws","fullPrizeEntries","fullPrizeBackfill"];
@@ -23,7 +23,7 @@ test("canonical public output is sourced from the immutable prediction run",()=>
 test("V3.3 backup and restore enumerate every community and full-prize table",()=>{
   assert.match(backupRoute,/schemaVersion:"v3\.3"/);
   for(const name of durable){assert.match(backupRoute,new RegExp(`${name}:await db\\.select`),`${name} missing from backup`);assert.match(restoreRoute,new RegExp(`"${name}"`),`${name} missing from restore`)}
-  assert.match(restoreRoute,/\["v3\.2","v3\.3"\]/);
+  assert.match(restoreRoute,/backup\.schemaVersion !== "v3\.2" && backup\.schemaVersion !== "v3\.3"/);
 });
 
 test("community audit rows and full-prize snapshots survive empty-database parity restore",()=>{
