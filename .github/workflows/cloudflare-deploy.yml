@@ -58,7 +58,10 @@ jobs:
           secret=$(openssl rand -hex 32)
           echo "::add-mask::$secret"
           printf '%s\n' "$secret" | npx wrangler secret put SYNC_TOKEN --config "$config"
-          trap 'npx wrangler secret delete SYNC_TOKEN --config "$config" --force' EXIT
+          cleanup() {
+            curl --fail --silent --show-error -X DELETE -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/thai-lotto-insight/secrets/SYNC_TOKEN" | jq -e '.success' >/dev/null
+          }
+          trap cleanup EXIT
           result=$(curl --silent --show-error --connect-timeout 10 --max-time 90 --retry 5 --retry-delay 5 --retry-all-errors --fail-with-body -X POST -H "Authorization: Bearer $secret" "$origin/api/admin/draw-sync")
           draw=$(jq -er 'select(.status == "imported" or .status == "updated" or .status == "duplicate") | .drawDate' <<< "$result")
           curl --fail --silent --show-error "$origin/api/results/$draw" | jq -e --arg date "$draw" '.. | objects | select(.drawDate? == $date)' >/dev/null
