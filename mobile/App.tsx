@@ -55,7 +55,7 @@ function Main() {
     finally { setLoading(false); }
   }
 
-  useEffect(() => { void fetchResults(); }, []);
+  useEffect(() => { void Promise.resolve().then(fetchResults); }, []);
 
   function refresh() {
     setLoading(true);
