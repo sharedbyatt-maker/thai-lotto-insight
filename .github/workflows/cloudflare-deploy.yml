@@ -1,0 +1,39 @@
+name: Deploy Cloudflare Worker
+on:
+  workflow_dispatch:
+    inputs:
+      enable_cron:
+        description: Enable scheduled draw sync after D1 has been seeded or restored
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency: thai-lotto-cloudflare-production
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      LOTTO_D1_ID: ${{ vars.LOTTO_D1_ID }}
+      ENABLE_CRON: ${{ inputs.enable_cron }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: |
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$LOTTO_D1_ID" ]; then
+            echo "::error::Set CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and LOTTO_D1_ID before deploying."
+            exit 1
+          fi
+      - run: npm ci
+      - run: npm run build
+      - run: |
+          node scripts/configure-cloudflare.mjs
+          if [ "$ENABLE_CRON" != "true" ]; then
+            node --input-type=module -e 'import fs from "node:fs"; const path="dist/server/wrangler.production.json"; const config=JSON.parse(fs.readFileSync(path,"utf8")); config.triggers={crons:[]}; fs.writeFileSync(path,JSON.stringify(config,null,2)+"\n")'
+          fi
+      - run: npx wrangler d1 migrations apply DB --remote --config dist/server/wrangler.production.json
+      - run: npx wrangler deploy --config dist/server/wrangler.production.json
